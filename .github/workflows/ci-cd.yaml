@@ -21,7 +21,7 @@ jobs:
         python-version: "3.12"
 
     - name: Install dependencies
-      run: pip install -r requirements.txt flake8 httpx
+      run: pip install -r requirements.txt flake8
 
     - name: Lint
       run: flake8 main.py database.py
@@ -31,10 +31,10 @@ jobs:
         mkdir -p database/data
         python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
         sleep 3
-        httpx http://localhost:8000/health --print-hb
-        httpx http://localhost:8000/info --print-hb
-        httpx http://localhost:8000/metrics --print-hb
-        pkill -f uvicorn
+        curl -f  http://localhost:8000/health 
+        curl -f  http://localhost:8000/info 
+        curl -f  http://localhost:8000/metrics 
+        pkill -f uvicorn || true
       env:
         DB_PATH: database/data/items.db
 
