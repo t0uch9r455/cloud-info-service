@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-info-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cloud-info-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "configmaps"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cloud-info-rolebinding
+subjects:
+- kind: ServiceAccount
+  name: cloud-info-sa
+roleRef:
+  kind: Role
+  name: cloud-info-role
+  apiGroup: rbac.authorization.k8s.io

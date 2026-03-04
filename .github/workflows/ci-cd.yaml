@@ -1,0 +1,75 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: cloud-info-service
+  EKS_CLUSTER: cloud-info-cluster
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt flake8 httpx
+
+    - name: Lint
+      run: flake8 main.py database.py
+
+    - name: Basic smoke test
+      run: |
+        python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+        sleep 5
+        httpx http://localhost:8000/health --print-hb
+        httpx http://localhost:8000/info --print-hb
+        httpx http://localhost:8000/metrics --print-hb
+        pkill -f uvicorn
+      
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push
+      run: |
+        IMAGE=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        docker build \
+          --build-arg GIT_COMMIT=${{ github.sha }} \
+          --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+          --build-arg APP_VERSION=1.0.0 \
+          -t $IMAGE .
+        docker push $IMAGE
+        echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+    - name: Deploy to EKS
+      run: |
+        aws eks update-kubeconfig \
+          --name ${{ env.EKS_CLUSTER }} \
+          --region ${{ env.AWS_REGION }}
+        kubectl set image deployment/cloud-info-service \
+          app=$IMAGE -n default
+        kubectl rollout status deployment/cloud-info-service \
+          -n default --timeout=300s

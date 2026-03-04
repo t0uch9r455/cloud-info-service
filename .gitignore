@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfstate*        
+
+# Secrets and credentials
+$env             
+*.pem             
+*.key             
+iam_policy.json   
+
+# Kubernetes
+kubeconfig        
+*.kubeconfig      
+
+# Docker
+.dockerignore
+
+# Logs
+*.log            
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
